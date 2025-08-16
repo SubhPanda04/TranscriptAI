@@ -41,7 +41,7 @@ TranscriptAI is a modern web application that converts meeting transcripts into 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/SubhPanda04/TranscriptAI.git
-   cd MangoDesk
+   cd TranscriptAI
    ```
 
 2. **Install backend dependencies**
