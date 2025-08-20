@@ -1,6 +1,6 @@
 const express = require('express');
 const axios = require('axios');
-const axiosRetry = require('axios-retry');
+const axiosRetry = require('axios-retry').default;
 const validator = require('validator');
 const { summarizeSchema } = require('../utils/validation');
 const { ValidationError, ExternalAPIError } = require('../utils/errors');
