@@ -8,6 +8,36 @@ const { emailLimiter } = require('../config/rateLimit');
 
 const router = express.Router();
 
+// Custom retry function for nodemailer
+const retrySendMail = async (transporter, mailOptions, maxRetries = 3) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await transporter.sendMail(mailOptions);
+      return result;
+    } catch (error) {
+      lastError = error;
+
+      // Don't retry for authentication errors or invalid recipients
+      if (error.code === 'EAUTH' || error.code === 'EENVELOPE') {
+        throw error;
+      }
+
+      // If this is the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Wait before retrying (exponential backoff)
+      const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+};
+
 router.post('/send-email', emailLimiter, async (req, res) => {
     const { error, value } = sendEmailSchema.validate(req.body);
     if (error) {
@@ -52,7 +82,7 @@ router.post('/send-email', emailLimiter, async (req, res) => {
             `
         };
 
-        await transporter.sendMail(mailOptions);
+        await retrySendMail(transporter, mailOptions);
         res.json({
             success: true,
             message: `Email sent successfully to ${recipientList.length} recipient(s)`
