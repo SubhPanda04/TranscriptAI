@@ -1,11 +1,22 @@
 const express = require('express');
 const axios = require('axios');
+const axiosRetry = require('axios-retry');
 const validator = require('validator');
 const { summarizeSchema } = require('../utils/validation');
 const { ValidationError, ExternalAPIError } = require('../utils/errors');
 const { summarizeLimiter } = require('../config/rateLimit');
 
 const router = express.Router();
+
+// Configure axios retry for Gemini API
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           (error.response && (error.response.status >= 500 || error.response.status === 429));
+  }
+});
 
 router.post('/summarize', summarizeLimiter, async (req, res) => {
     const { error, value } = summarizeSchema.validate(req.body);
