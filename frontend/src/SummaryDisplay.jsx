@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -11,21 +12,22 @@ const SummaryDisplay = ({ summary, setSummary, loading, setLoading, transcript, 
     setEmailStatus('');
 
     try {
-      const res = await fetch(`${API_URL}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summary, recipients })
+      const response = await axios.post(`${API_URL}/v1/send-email`, {
+        summary,
+        recipients
       });
 
-      const data = await res.json();
-
-      if (data.success) {
+      if (response.data.success) {
         setEmailStatus('Email sent successfully!');
       } else {
-        setEmailStatus(data.details || data.error || 'Failed to send email. Please check email configuration.');
+        setEmailStatus(response.data.details || response.data.error || 'Failed to send email. Please check email configuration.');
       }
     } catch (error) {
-      setEmailStatus('Network error. Please check if the backend server is running.');
+      if (error.response) {
+        setEmailStatus(error.response.data.details || error.response.data.error || 'Failed to send email.');
+      } else {
+        setEmailStatus('Network error. Please check if the backend server is running.');
+      }
     }
 
     setLoading(false);
