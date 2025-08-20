@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import './index.css';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Configure axios with retry
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount) => {
+    return Math.pow(2, retryCount) * 1000; 
+  },
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           (error.response && (error.response.status >= 500 || error.response.status === 429));
+  }
+});
 
 const FileUpload = lazy(() => import('./FileUpload.jsx'));
 const SummaryDisplay = lazy(() => import('./SummaryDisplay.jsx'));
@@ -25,14 +39,17 @@ function App() {
   const handleSummarize = useCallback(async () => {
     setLoading(true);
     setSummary('');
-    const res = await fetch(`${API_URL}/summarize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcript, prompt })
-    });
-    const data = await res.json();
-    setSummary(data.summary || '');
-    setLoading(false);
+    try {
+      const response = await axios.post(`${API_URL}/v1/summarize`, {
+        transcript,
+        prompt
+      });
+      setSummary(response.data.summary || '');
+    } catch (error) {
+      console.error('Summarize error:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [transcript, prompt]);
 
   const debouncedSummarize = useMemo(() => debounce(handleSummarize, 500), [handleSummarize]);
